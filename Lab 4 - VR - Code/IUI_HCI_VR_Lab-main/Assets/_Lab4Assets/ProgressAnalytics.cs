@@ -4,9 +4,6 @@ using TMPro;
 using System;
 using System.Collections.Generic;
 
-/**
- * Система детальной аналитики прогресса с отслеживанием времени выполнения задач
- */
 public class ProgressAnalytics : MonoBehaviour
 {
     [Header("UI References")]

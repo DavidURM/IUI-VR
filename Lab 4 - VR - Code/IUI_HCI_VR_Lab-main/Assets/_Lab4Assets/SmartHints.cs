@@ -2,9 +2,6 @@ using UnityEngine;
 using TMPro;
 using System.Collections;
 
-/**
- * Система интеллектуальных подсказок, адаптирующихся к поведению пользователя
- */
 public class SmartHints : MonoBehaviour
 {
     [Header("UI References")]

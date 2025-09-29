@@ -3,9 +3,6 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections;
 
-/**
- * Тьюториал-система с пошаговыми инструкциями для всех задач
- */
 public class TutorialSystem : MonoBehaviour
 {
     [Header("UI References")]
