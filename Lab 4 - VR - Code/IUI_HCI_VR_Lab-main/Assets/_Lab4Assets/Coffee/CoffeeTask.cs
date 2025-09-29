@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables; // XRGrabInteractable
+using System.Collections;
 
 public class CoffeeTask : MonoBehaviour
 {
@@ -18,12 +19,19 @@ public class CoffeeTask : MonoBehaviour
     public float rayDistance = 0.35f;     // stream length
 
     [Header("Angles")]
-    public float angleOnDeg = 25;        // start pouring when <= this to DOWN
-    public float angleOffDeg = 45;       // keep pouring when <= this
+    public float angleOnDeg = 35;        // start pouring when <= this to DOWN (more realistic)
+    public float angleOffDeg = 55;       // keep pouring when <= this
 
     [Header("Completion")]
     public float requiredSeconds = 0.3f;    // time hitting cup to complete
     public bool IsComplete { get; private set; }
+    
+    [Header("Visual Feedback")]
+    public Renderer cupRenderer;             // For visual feedback on the cup
+    
+    [Header("Cup Materials")]
+    public Material emptyCupMaterial;        // Material for empty cup
+    public Material filledCupMaterial;       // Material for filled cup
 
     // State
     float pouringSeconds;
@@ -54,16 +62,21 @@ public class CoffeeTask : MonoBehaviour
         if (pouring && RayHitsCupMouth())
         {
             pouringSeconds += Time.deltaTime;
+            // Visual feedback: cup fills with coffee color
+            UpdateCupVisualization(pouringSeconds / requiredSeconds);
+            
             if (pouringSeconds >= requiredSeconds)
             {
                 IsComplete = true;
                 SetParticles(false);
+                StartCoroutine(CompleteCoffeeFlash());
                 Debug.Log("Coffee task COMPLETE");
             }
         }
         else
         {
             pouringSeconds = 0f;
+            UpdateCupVisualization(0f);
         }
     }
 
@@ -141,5 +154,62 @@ public class CoffeeTask : MonoBehaviour
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         rb.Sleep();
+    }
+    
+    // Visual feedback for cup progress
+    private void UpdateCupVisualization(float fillLevel)
+    {
+        if (cupRenderer == null) return;
+        
+        // Use materials if available, otherwise fallback to color interpolation
+        if (emptyCupMaterial != null && filledCupMaterial != null)
+        {
+            // Smoothly blend between materials
+            var lerpedMaterial = new Material(emptyCupMaterial);
+            var emptyColor = emptyCupMaterial.color;
+            var filledColor = filledCupMaterial.color;
+            lerpedMaterial.color = Color.Lerp(emptyColor, filledColor, fillLevel);
+            cupRenderer.material = lerpedMaterial;
+        }
+        else
+        {
+            // Fallback to color interpolation
+            var material = cupRenderer.material;
+            var coffeeColor = new Color(0.4f, 0.2f, 0.1f, fillLevel * 0.8f); // Coffee brown
+            
+            if (material.HasProperty("_Color"))
+            {
+                var baseColor = new Color(0.8f, 0.8f, 1f, 0.3f); // Light blue empty cup
+                material.color = Color.Lerp(baseColor, coffeeColor, fillLevel);
+            }
+        }
+        
+        // Additional visual feedback: scale or glow effect
+        if (fillLevel > 0.8f)
+        {
+            cupRenderer.transform.localScale = Vector3.one * 1.05f; // Slight scale when nearly full
+        }
+        else
+        {
+            cupRenderer.transform.localScale = Vector3.one;
+        }
+    }
+    
+    // Completion feedback animation
+    private IEnumerator CompleteCoffeeFlash()
+    {
+        if (cupRenderer == null) yield break;
+        
+        var material = cupRenderer.material;
+        var originalColor = material.color;
+        var completeColor = new Color(1f, 1f, 0f, 0.8f); // Yellow success color
+        
+        for (int i = 0; i < 3; i++)
+        {
+            material.color = completeColor;
+            yield return new WaitForSeconds(0.2f);
+            material.color = originalColor;
+            yield return new WaitForSeconds(0.2f);
+        }
     }
 }

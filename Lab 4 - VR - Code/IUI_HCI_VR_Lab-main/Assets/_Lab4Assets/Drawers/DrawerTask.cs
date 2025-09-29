@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
+using System.Collections;
 
 // You can change this file
 public class DrawerTask : MonoBehaviour
@@ -11,6 +12,13 @@ public class DrawerTask : MonoBehaviour
     public FileType expectedType = FileType.Green;
     public XRSocketInteractor[] sockets; // drag from inspector
     public int requiredCount = 4; // should normally be equal to sockets.Length
+    
+    [Header("Visual Feedback")]
+    public Renderer drawerFrontRenderer; // Reference to drawer front for color indication
+    
+    [Header("Materials")]
+    public Material greenFileMaterial;     // Green file material
+    public Material lightGreenFileMaterial; // Light green file material
 
     [Header("Metrics (persist across resets)")]
     [SerializeField] private int totalInserts;   // every time something is placed in any socket
@@ -30,6 +38,7 @@ public class DrawerTask : MonoBehaviour
         }
 
         Recompute();
+        SetupDrawerAppearance();
     }
 
     // DO NOT CHANGE THIS METHOD
@@ -55,7 +64,16 @@ public class DrawerTask : MonoBehaviour
         {
             var fi = selected.GetComponent<FileItem>();
             if (!fi || fi.fileType != expectedType)
+            {
                 wrongInserts++;
+                // Visual feedback for wrong insertion
+                StartCoroutine(FlashDrawerWrong());
+            }
+            else
+            {
+                // Visual feedback for correct insertion
+                StartCoroutine(FlashDrawerCorrect());
+            }
         }
 
         Recompute();
@@ -111,4 +129,82 @@ public class DrawerTask : MonoBehaviour
     // This is called when finishing the task to export numbers (not used in final version)
     public (int total, int wrong, float rate) GetErrorMetrics()
         => (totalInserts, wrongInserts, ErrorRate);
+        
+    // Setup drawer appearance to indicate expected file type
+    private void SetupDrawerAppearance()
+    {
+        if (drawerFrontRenderer == null) return;
+        
+        Material materialToApply = null;
+        
+        switch (expectedType)
+        {
+            case FileType.Green:
+                materialToApply = greenFileMaterial;
+                break;
+            case FileType.LightGreen:
+                materialToApply = lightGreenFileMaterial;
+                break;
+            default:
+                return; // Don't change if no specific type
+        }
+        
+        if (materialToApply != null)
+        {
+            drawerFrontRenderer.material = materialToApply;
+        }
+        else
+        {
+            // Fallback to color tinting if materials not assigned
+            var material = drawerFrontRenderer.material;
+            Color drawerColor;
+            
+            switch (expectedType)
+            {
+                case FileType.Green:
+                    drawerColor = new Color(0.2f, 0.8f, 0.2f, 0.7f);
+                    break;
+                case FileType.LightGreen:
+                    drawerColor = new Color(0.4f, 0.9f, 0.4f, 0.7f);
+                    break;
+                default:
+                    drawerColor = Color.white;
+                    break;
+            }
+            
+            material.color = drawerColor;
+        }
+    }
+    
+    // Visual feedback for correct insertion
+    private IEnumerator FlashDrawerCorrect()
+    {
+        if (drawerFrontRenderer == null) yield break;
+        
+        var renderer = drawerFrontRenderer;
+        var originalColor = renderer.material.color;
+        var flashColor = Color.green;
+        
+        renderer.material.color = flashColor;
+        yield return new WaitForSeconds(0.2f);
+        renderer.material.color = originalColor;
+    }
+    
+    // Visual feedback for wrong insertion
+    private IEnumerator FlashDrawerWrong()
+    {
+        if (drawerFrontRenderer == null) yield break;
+        
+        var renderer = drawerFrontRenderer;
+        var originalColor = renderer.material.color;
+        var flashColor = Color.red;
+        
+        for (int i = 0; i < 3; i++)
+        {
+            renderer.material.color = flashColor;
+            yield return new WaitForSeconds(0.1f);
+            renderer.material.color = originalColor;
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
 }
